@@ -30,7 +30,7 @@ import (
 )
 
 func main() {
-    parser, err := pamphlet.NewParser("path/to/your.epub")
+    parser, err := pamphlet.Open("path/to/your.epub")
     if err != nil {
         log.Fatal(err)
     }
@@ -53,6 +53,27 @@ func main() {
 }
 ```
 
+Open an EPUB file using an `os.File` object:
+
+```go
+    file *os.File
+    parser, err := pamphlet.OpenFile(file)
+    if err != nil {
+        log.Fatal(err)
+    }
+```
+
+Open an EPUB file using a byte slice:
+
+```go
+    data []byte
+    parser, err := pamphlet.OpenBytes(data)
+    if err != nil {
+        log.Fatal(err)
+    }
+```
+
+
 ## Testing
 
 To run the tests, use the following command:
@@ -63,7 +84,9 @@ go test ./...
 
 ## Project Structure
 
+- `pamphlet.go`: Contains the main functions for opening and parsing EPUB files.
 - `parser.go`: Contains the main logic for parsing EPUB files.
+- `book.go`: Contains the `Book` struct and related functions.
 - `parser_test.go`: Contains tests for the parser.
 - `epub/`: Contains the EPUB-related structs and types.
 
@@ -74,4 +97,3 @@ Contributions are welcome! Please open an issue or submit a pull request.
 ## License
 
 This project is licensed under the MIT License.
-```
