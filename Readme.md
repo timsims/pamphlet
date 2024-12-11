@@ -1,6 +1,3 @@
-Here is a basic `README.md` for your Go project:
-
-```markdown
 # Pamphlet
 
 Pamphlet is a Go library for parsing EPUB files. It extracts metadata, table of contents, and other relevant information from EPUB files.
