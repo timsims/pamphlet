@@ -2,12 +2,14 @@ package pamphlet
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"github.com/timsims/pamphlet/epub"
 	"io"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -17,16 +19,18 @@ const (
 	NcxMediaType  = "application/x-dtbncx+xml"
 	ContainerFile = "meta-inf/container.xml"
 	NcxFileExt    = ".ncx"
+)
 
-	RootFileNameNotFound = "root file name not found"
-	OpfFileNotFound      = "opf file not found"
-	NotEpub              = "not epub"
-	FailToOpenFile       = "failed to open epub file"
+var (
+	ErrRootFileNameNotFound = errors.New("root file name not found")
+	ErrOpfFileNotFound      = errors.New("opf file not found")
+	ErrNotEpub              = errors.New("not epub file")
+	ErrOpenEpub             = errors.New("failed to open epub file")
 )
 
 type Parser struct {
 	// current epub file pointer
-	zipReader *zip.ReadCloser
+	zipReader ZipReaderCloser
 
 	// root file of epub
 	rootFile *epub.RootFile
@@ -54,13 +58,47 @@ type ManifestFile struct {
 	file      *zip.File
 }
 
-func NewParser(path string) (*Parser, error) {
+// Open open epub by file path
+func Open(path string) (*Parser, error) {
 	result, err := zip.OpenReader(path)
 	if err != nil {
-		return nil, errors.New(FailToOpenFile)
+		return nil, ErrOpenEpub
 	}
 	parser := &Parser{
-		zipReader:     result,
+		zipReader:     &ZipReadCloser{result},
+		toc:           make(map[string]epub.NavPoint),
+		manifestFiles: make(map[string]ManifestFile),
+	}
+
+	err = parser.parse()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return parser, nil
+}
+
+// OpenFile open epub by file pointer
+// use this function if you have the epub file in memory, eg: from http request
+func OpenFile(file *os.File) (*Parser, error) {
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, ErrOpenEpub
+	}
+	return OpenBytes(fileBytes)
+}
+
+// OpenBytes open epub by byte slice
+// use this function if you have the epub file in memory and you don't have file pointer
+func OpenBytes(data []byte) (*Parser, error) {
+	result, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+
+	if err != nil {
+		return nil, ErrOpenEpub
+	}
+	parser := &Parser{
+		zipReader:     &ZipReader{result},
 		toc:           make(map[string]epub.NavPoint),
 		manifestFiles: make(map[string]ManifestFile),
 	}
@@ -76,7 +114,7 @@ func NewParser(path string) (*Parser, error) {
 
 func (p *Parser) parse() error {
 	if !p.checkMimeType() {
-		return errors.New(NotEpub)
+		return ErrNotEpub
 	}
 
 	err := p.getRootFile()
@@ -106,7 +144,7 @@ func (p *Parser) Close() error {
 func (p *Parser) checkMimeType() bool {
 	isValid := false
 
-	for _, f := range p.zipReader.File {
+	for _, f := range p.zipReader.Files() {
 		if f.Name == "mimetype" {
 			rc, err := f.Open()
 			if err != nil {
@@ -133,7 +171,7 @@ func (p *Parser) checkMimeType() bool {
 // META-INF/container.xml is the file that defines the root file's name
 func (p *Parser) getRootFile() error {
 
-	for _, f := range p.zipReader.File {
+	for _, f := range p.zipReader.Files() {
 		if strings.ToLower(f.Name) == ContainerFile {
 			rc, err := f.Open()
 			if err != nil {
@@ -155,14 +193,14 @@ func (p *Parser) getRootFile() error {
 			}
 
 			if container.RootFile.FullPath == "" {
-				return errors.New(RootFileNameNotFound)
+				return ErrRootFileNameNotFound
 			}
 
 			p.rootFile = &container.RootFile
 			return nil
 		}
 	}
-	return errors.New(RootFileNameNotFound)
+	return ErrRootFileNameNotFound
 }
 
 // parseRootFile parse root file of epub
@@ -170,7 +208,7 @@ func (p *Parser) getRootFile() error {
 // we parse xml and get the struct of Opf
 // and also determine the path of manifest files
 func (p *Parser) parseRootFile() error {
-	for _, f := range p.zipReader.File {
+	for _, f := range p.zipReader.Files() {
 		if f.Name == p.rootFile.FullPath {
 
 			// get the manifest files path
@@ -202,7 +240,7 @@ func (p *Parser) parseRootFile() error {
 			return nil
 		}
 	}
-	return errors.New(OpfFileNotFound)
+	return ErrOpfFileNotFound
 }
 
 // parseToc parse table of content of epub
@@ -280,10 +318,10 @@ func (p *Parser) parseNavPoint(navPoint epub.NavPoint) {
 
 // cacheManifestFiles associate the manifest files with the id attribute and zip.File, so we can easily access the file later
 func (p *Parser) cacheManifestFiles() {
-	p.manifestFiles = make(map[string]ManifestFile, len(p.zipReader.File))
+	p.manifestFiles = make(map[string]ManifestFile, len(p.zipReader.Files()))
 
 	for _, item := range p.opf.Manifest.Items {
-		for _, f := range p.zipReader.File {
+		for _, f := range p.zipReader.Files() {
 			fileName := item.Href
 
 			// if manifestPath is not empty, then the file is in a subdirectory

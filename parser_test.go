@@ -3,6 +3,7 @@ package pamphlet
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
@@ -11,31 +12,45 @@ const (
 )
 
 func TestParseNormalEpub(t *testing.T) {
-	parser, err := NewParser(fmt.Sprintf("%s/normal.epub", path))
+	parser, err := Open(fmt.Sprintf("%s/normal.epub", path))
 	assert.Nil(t, err)
 	assert.NotNil(t, parser)
 
 	testParseBookContent(t, parser.GetBook())
+	assert.Nil(t, parser.Close())
+}
+
+func TestParseNormalEpubByBytes(t *testing.T) {
+	filename := fmt.Sprintf("%s/normal.epub", path)
+	file, err := os.Open(filename)
+	assert.Nil(t, err)
+	parser, err := OpenFile(file)
+	assert.Nil(t, err)
+	assert.NotNil(t, parser)
+
+	testParseBookContent(t, parser.GetBook())
+	assert.Nil(t, parser.Close())
 }
 
 func TestParseWrongToCAttributeEpubFile(t *testing.T) {
-	parser, err := NewParser(fmt.Sprintf("%s/wrong_toc_attribute.epub", path))
+	parser, err := Open(fmt.Sprintf("%s/wrong_toc_attribute.epub", path))
 	assert.Nil(t, err)
 	assert.NotNil(t, parser)
 
 	testParseBookContent(t, parser.GetBook())
+	assert.Nil(t, parser.Close())
 }
 
 func TestParseMissingEpubFile(t *testing.T) {
-	_, err := NewParser(fmt.Sprintf("%s/not_existing.epub", path))
+	_, err := Open(fmt.Sprintf("%s/not_existing.epub", path))
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), FailToOpenFile)
+	assert.Equal(t, err, ErrOpenEpub)
 }
 
 func TestParseInvalidEpub(t *testing.T) {
-	_, err := NewParser(fmt.Sprintf("%s/wrong_mimetype.epub", path))
+	_, err := Open(fmt.Sprintf("%s/wrong_mimetype.epub", path))
 	assert.NotNil(t, err)
-	assert.Equal(t, err.Error(), NotEpub)
+	assert.Equal(t, err, ErrNotEpub)
 }
 
 func testParseBookContent(t *testing.T, book *Book) {
