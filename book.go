@@ -23,16 +23,6 @@ type Book struct {
 	ManifestItems []ManifestItem
 }
 
-func (b *Book) GetChaptersSize() int {
-	size := 0
-	for _, c := range b.Chapters {
-		if c.HasToc {
-			size++
-		}
-	}
-	return size
-}
-
 type Chapter struct {
 	ZipFile
 	// ID is the idref attribute in the spine tag

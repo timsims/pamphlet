@@ -17,6 +17,11 @@ const (
 	NcxMediaType  = "application/x-dtbncx+xml"
 	ContainerFile = "meta-inf/container.xml"
 	NcxFileExt    = ".ncx"
+
+	RootFileNameNotFound = "root file name not found"
+	OpfFileNotFound      = "opf file not found"
+	NotEpub              = "not epub"
+	FailToOpenFile       = "failed to open epub file"
 )
 
 type Parser struct {
@@ -52,8 +57,7 @@ type ManifestFile struct {
 func NewParser(path string) (*Parser, error) {
 	result, err := zip.OpenReader(path)
 	if err != nil {
-		fmt.Println(err)
-		return nil, errors.New("failed to open epub file")
+		return nil, errors.New(FailToOpenFile)
 	}
 	parser := &Parser{
 		zipReader:     result,
@@ -72,7 +76,7 @@ func NewParser(path string) (*Parser, error) {
 
 func (p *Parser) parse() error {
 	if !p.checkMimeType() {
-		return errors.New("not epub")
+		return errors.New(NotEpub)
 	}
 
 	err := p.getRootFile()
@@ -151,14 +155,14 @@ func (p *Parser) getRootFile() error {
 			}
 
 			if container.RootFile.FullPath == "" {
-				return errors.New("root file not found")
+				return errors.New(RootFileNameNotFound)
 			}
 
 			p.rootFile = &container.RootFile
 			return nil
 		}
 	}
-	return errors.New("root file not found")
+	return errors.New(RootFileNameNotFound)
 }
 
 // parseRootFile parse root file of epub
@@ -198,7 +202,7 @@ func (p *Parser) parseRootFile() error {
 			return nil
 		}
 	}
-	return errors.New("opf file not found")
+	return errors.New(OpfFileNotFound)
 }
 
 // parseToc parse table of content of epub
@@ -367,6 +371,6 @@ func (p *Parser) convertManifest() []ManifestItem {
 	return manifestItems
 }
 
-func (p *Parser) Book() *Book {
+func (p *Parser) GetBook() *Book {
 	return p.book
 }
