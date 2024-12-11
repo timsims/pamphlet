@@ -1,4 +1,4 @@
-module pamphlet
+module github.com/timsims/pamphlet
 
 go 1.23
 

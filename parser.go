@@ -5,9 +5,9 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/timsims/pamphlet/epub"
 	"io"
 	"log"
-	"pamphlet/epub"
 	"strings"
 )
 
