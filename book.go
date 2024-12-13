@@ -2,7 +2,6 @@ package pamphlet
 
 import (
 	"errors"
-	"strings"
 )
 
 const (
@@ -45,32 +44,7 @@ func (c *Chapter) GetContent() (string, error) {
 		return "", err
 	}
 
-	contentStr := string(content)
-	contentStr = removeTags(contentStr, "script")
-	contentStr = removeTags(contentStr, "style")
-	contentStr = removeEventHandlers(contentStr)
-	contentStr = strings.ReplaceAll(contentStr, "\u0000", "\n")
-
-	return contentStr, nil
-}
-
-func removeTags(str, tag string) string {
-	for {
-		start := strings.Index(strings.ToLower(str), "<"+tag)
-		if start == -1 {
-			break
-		}
-		end := strings.Index(strings.ToLower(str[start:]), "</"+tag+">")
-		if end == -1 {
-			break
-		}
-		str = str[:start] + str[start+end+len(tag)+3:]
-	}
-	return str
-}
-
-func removeEventHandlers(str string) string {
-	return strings.ReplaceAll(str, "on", "skip-on")
+	return string(content), nil
 }
 
 type ManifestItem struct {
